@@ -6,7 +6,7 @@ import os
 # from api.users import users_bp
 from api.problems_api import problems_bp
 # from api.submissions import submissions_bp
-# from api.contests import contests_bp
+# from api.contests_api import contests_bp
 # from api.admin import admin_bp
 
 
