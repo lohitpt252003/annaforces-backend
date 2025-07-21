@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 
 # from api.users import users_bp
-# from api.problems import problems_bp
+from api.problems_api import problems_bp
 # from api.submissions import submissions_bp
 # from api.contests import contests_bp
 # from api.admin import admin_bp
@@ -15,7 +15,7 @@ def create_app():
     CORS(app)
 
     # app.register_blueprint(users_bp, url_prefix='/api/users')
-    # app.register_blueprint(problems_bp, url_prefix='/api/problems')
+    app.register_blueprint(problems_bp, url_prefix='/api/problems')
     # app.register_blueprint(submissions_bp, url_prefix='/api/submissions')
     # app.register_blueprint(contests_bp, url_prefix='/api/contests')
     # app.register_blueprint(admin_bp, url_prefix='/api/admin')
