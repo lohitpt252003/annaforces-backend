@@ -1,0 +1,58 @@
+# File: judge/judge.py
+
+import os, sys
+from run import run
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from services.github_services import get_file, add_file, update_file
+
+
+def handle_submission(data):
+    """
+    Returns a list of log objects for each testcase.
+    Never raises—errors are captured in the 'stderr' field.
+    """
+    problem_id   = int(data.get("problem_id", "0"))
+    language     = data.get("language", 'py')
+    code         = data.get("code", "print('Welcome to ANNAFORCES!\nPlease enter the correct code.\n')")
+    time_limit   = data.get("time_limit", "1s")
+    memory_limit = data.get("memory_limit", "1024MB")
+    logs = []
+
+    # 1) How many testcases?
+    raw = get_file(f"problems/{problem_id}/testcases/no.txt")
+    try:
+        tests = int(raw.strip())
+    except:
+        # Invalid testcase count
+        return [{"testcase": None, "stdout": "", "stderr": f"Invalid testcase count: {raw}", "testcase_status": False}]
+
+    # 2) Loop through each testcase
+    for test in range(1, tests + 1):
+        stdin  = get_file(f"problems/{problem_id}/testcases/{test}.in")
+        expect = get_file(f"problems/{problem_id}/testcases/{test}.out")
+
+        out = run(code, stdin, language, time_limit, memory_limit)
+
+        passed = (out["stdout"].strip() == expect.strip())
+        logs.append({
+            "testcase":        test,
+            "stdin":           stdin,
+            "expected_stdout": expect,
+            "stdout":          out["stdout"],
+            "stderr":          out["stderr"],
+            "testcase_status": passed
+        })
+
+        # If runtime error or TLE (no stdout), still include that test and continue
+        # (don’t abort early unless you explicitly want to stop on first RE/TLE)
+    return logs
+
+
+# if __name__ == "__main__":
+#     # Example usage: read a JSON payload from stdin and print logs
+#     import sys, json
+#     data = json.load(sys.stdin)
+#     result = handle_submission(data)
+#     print(json.dumps(result, indent=2))
