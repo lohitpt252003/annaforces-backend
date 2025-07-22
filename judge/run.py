@@ -11,7 +11,7 @@ dotenv.load_dotenv()
 # The name/tag of your built Docker image
 DOCKER_IMAGE = os.getenv("JUDGE_IMAGE", "my-judge-image:latest")
 
-# 50 MiB size limit
+# 50 MiB size limit
 MAX_BYTES = 50 * 1024 * 1024
 
 # Map language to filename and container commands
@@ -24,13 +24,10 @@ LANG_CONFIG = {
 
 def run(code, stdin=None, language=None, timelimit="1s", memorylimit="1024MB"):
     """
-    Compile & run `code` in the judge Docker container under a host-mounted temp dir.
-    Enforces:
-      - code and stdin each ≤ 50 MiB
-      - container-side file-size ulimit of 50 MiB
+    Compile & run `code` in Docker, enforcing host-side timeout.
     Returns dict with 'stdout' and 'stderr' (never raises).
     """
-    # 0) Pre‑write size checks
+    # Pre-write size checks
     if len(code.encode()) > MAX_BYTES:
         return {"stdout": "", "stderr": "Source code too large (>50 MiB)"}
     if stdin and len(stdin.encode()) > MAX_BYTES:
@@ -40,68 +37,80 @@ def run(code, stdin=None, language=None, timelimit="1s", memorylimit="1024MB"):
     if not cfg:
         return {"stdout": "", "stderr": f"Unsupported language: {language}"}
 
-    # 1) Prepare host temp dir
-    tmpdir = tempfile.mkdtemp(prefix="judge_")
+    # Parse time limit, e.g. "2s" → 2
+    try:
+        sec = int(timelimit.rstrip("s"))
+    except:
+        sec = 1
+
+    # Prepare host temp dir
+    tmpdir = tempfile.mkdtemp(prefix="judge_", dir='./')
     try:
         # Write source
-        src_path = os.path.join(tmpdir, cfg["file"])
-        with open(src_path, "w") as f:
+        src = os.path.join(tmpdir, cfg["file"])
+        with open(src, "w") as f:
             f.write(code)
 
-        # Write stdin if provided
+        # Write stdin if present
         if stdin is not None:
-            in_path = os.path.join(tmpdir, "input.txt")
-            with open(in_path, "w") as f:
+            in_file = os.path.join(tmpdir, "input.txt")
+            with open(in_file, "w") as f:
                 f.write(stdin)
         else:
-            in_path = None
+            in_file = None
 
-        # 2) Build command string to run inside container
+        # Build the in-container shell command
         cmds = []
         if cfg["compile"]:
+            # compile, redirect stderr
             cmds.append(f"{cfg['compile']} 2> compile.err")
-        run_cmd = cfg["run"]
-        if in_path:
-            cmds.append(f"timeout {timelimit} {run_cmd} < input.txt 2> runtime.err | tee output.txt")
+        # run executable/script, redirect stderr, capture stdout
+        if in_file:
+            cmds.append(f"{cfg['run']} < input.txt 2> runtime.err | tee output.txt")
         else:
-            cmds.append(f"timeout {timelimit} {run_cmd} 2> runtime.err | tee output.txt")
-        inner_cmd = " && ".join(cmds) + " || true"
+            cmds.append(f"{cfg['run']} 2> runtime.err | tee output.txt")
+        inner_cmd = " && ".join(cmds)
 
-        # 3) Docker invocation with file‑size ulimit
+        # Full docker command
         docker_cmd = [
             "docker", "run", "--rm",
-            "--ulimit", f"fsize={MAX_BYTES // 512}",   # 50 MiB in 512‑byte blocks
+            "--ulimit", f"fsize={MAX_BYTES // 512}",
             "-v", f"{tmpdir}:/judge",
             "-w", "/judge",
             DOCKER_IMAGE,
-            "bash", "-c", inner_cmd
+            "bash", "-lc", inner_cmd
         ]
 
-        proc = subprocess.run(
-            docker_cmd,
-            capture_output=True,
-            text=True
-        )
+        # Execute with host-side timeout
+        try:
+            proc = subprocess.run(
+                docker_cmd,
+                capture_output=True,
+                text=True,
+                timeout=sec + 1
+            )
+        except subprocess.TimeoutExpired:
+            return {"stdout": "", "stderr": "Time Limit Exceeded"}
 
-        # 4) Read results
+        # Read results
         stderr = ""
         stdout = ""
 
-        # Compile‑error?
+        # Compile error?
         ce = os.path.join(tmpdir, "compile.err")
         if os.path.exists(ce) and os.path.getsize(ce) > 0:
-            with open(ce) as f: stderr = f.read().strip()
+            stderr = open(ce).read().strip()
             return {"stdout": "", "stderr": stderr}
 
-        # Runtime‑error or TLE?
+        # Runtime error?
         re = os.path.join(tmpdir, "runtime.err")
         if os.path.exists(re) and os.path.getsize(re) > 0:
-            with open(re) as f: stderr = f.read().strip()
+            stderr = open(re).read().strip()
 
         # Normal output
-        outf = os.path.join(tmpdir, "output.txt")
-        if os.path.exists(outf):
-            with open(outf) as f: stdout = f.read()
+        out = os.path.join(tmpdir, "output.txt")
+        if os.path.exists(out):
+            stdout = open(out).read()
 
         return {"stdout": stdout, "stderr": stderr}
 

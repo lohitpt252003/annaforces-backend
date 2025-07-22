@@ -15,13 +15,13 @@ def handle_submission(data):
     """
     problem_id   = int(data.get("problem_id", "0"))
     language     = data.get("language", 'py')
-    code         = data.get("code", "print('Welcome to ANNAFORCES!\nPlease enter the correct code.\n')")
+    code         = data.get("code", "print('Welcome to ANNAFORCES!')\nprint('Please enter the correct code.')")
     time_limit   = data.get("time_limit", "1s")
     memory_limit = data.get("memory_limit", "1024MB")
     logs = []
 
     # 1) How many testcases?
-    raw = get_file(f"problems/{problem_id}/testcases/no.txt")
+    raw = get_file(f"data/problems/{problem_id}/testcases/no.txt")[0]
     try:
         tests = int(raw.strip())
     except:
@@ -30,10 +30,12 @@ def handle_submission(data):
 
     # 2) Loop through each testcase
     for test in range(1, tests + 1):
-        stdin  = get_file(f"problems/{problem_id}/testcases/{test}.in")
-        expect = get_file(f"problems/{problem_id}/testcases/{test}.out")
+        stdin  = get_file(f"data/problems/{problem_id}/testcases/{test}.in")[0]
+        expect = get_file(f"data/problems/{problem_id}/testcases/{test}.out")[0]
 
         out = run(code, stdin, language, time_limit, memory_limit)
+        # print(code)
+        # print(out)
 
         passed = (out["stdout"].strip() == expect.strip())
         logs.append({
@@ -50,9 +52,11 @@ def handle_submission(data):
     return logs
 
 
-# if __name__ == "__main__":
-#     # Example usage: read a JSON payload from stdin and print logs
-#     import sys, json
-#     data = json.load(sys.stdin)
-#     result = handle_submission(data)
-#     print(json.dumps(result, indent=2))
+if __name__ == "__main__":
+    data = {
+        "problem_id" : 1,
+        'language': 'py',
+        # 'code': 'while 1: open("file.txt", "w")',
+    }
+
+    print(handle_submission(data))
