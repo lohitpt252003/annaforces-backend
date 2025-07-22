@@ -68,7 +68,7 @@ def add_file(filename_path, data, commit_message=None, retries=3):
     
     payload = {
         "message": message,
-        "content": base64.b64encode(data.encode('utf-8')).decode('ascii')
+        "content": base64.b64encode(str(data).encode('utf-8')).decode('ascii')
     }
     
     for attempt in range(retries):
@@ -108,7 +108,7 @@ def update_file(filename_path, data, commit_message=None, retries=3):
     
     payload = {
         "message": message,
-        "content": base64.b64encode(data.encode('utf-8')).decode('ascii'),
+        "content": base64.b64encode(str(data).encode('utf-8')).decode('ascii'),
         "sha": sha
     }
 

@@ -29,9 +29,9 @@ def run(code, stdin=None, language=None, timelimit="1s", memorylimit="1024MB"):
     """
     # Pre-write size checks
     if len(code.encode()) > MAX_BYTES:
-        return {"stdout": "", "stderr": "Source code too large (>50 MiB)"}
+        return {"stdout": "", "stderr": "Source code too large (>50 MiB)"}
     if stdin and len(stdin.encode()) > MAX_BYTES:
-        return {"stdout": "", "stderr": "Input too large (>50 MiB)"}
+        return {"stdout": "", "stderr": "Input too large (>50 MiB)"}
 
     cfg = LANG_CONFIG.get(language)
     if not cfg:

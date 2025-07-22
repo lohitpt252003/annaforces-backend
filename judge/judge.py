@@ -1,14 +1,14 @@
 # File: judge/judge.py
 
 import os, sys
-from run import run
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from judge.run import run
 from services.github_services import get_file, add_file, update_file
 
 
-def handle_submission(data):
+def handle_submission_judge(data):
     """
     Returns a list of log objects for each testcase.
     Never raises—errors are captured in the 'stderr' field.
@@ -50,13 +50,3 @@ def handle_submission(data):
         # If runtime error or TLE (no stdout), still include that test and continue
         # (don’t abort early unless you explicitly want to stop on first RE/TLE)
     return logs
-
-
-if __name__ == "__main__":
-    data = {
-        "problem_id" : 1,
-        'language': 'py',
-        # 'code': 'while 1: open("file.txt", "w")',
-    }
-
-    print(handle_submission(data))
